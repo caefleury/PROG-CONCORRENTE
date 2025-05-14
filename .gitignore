@@ -1,0 +1,38 @@
+# Compiled binaries and executables
+s
+*
+!*/
+!*.*
+
+# Compiled object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Compiled dynamic libraries
+*.so
+*.so.*
+*.dylib
+*.dll
+
+# Compiled static libraries
+*.a
+*.la
+*.lo
+*.lib
+
+# Dependency files
+*.d
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
