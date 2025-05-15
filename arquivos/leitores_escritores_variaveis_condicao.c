@@ -53,25 +53,25 @@ int main() {
 void* reader(void *arg) {
 	int i = *((int *) arg);
 	while(TRUE) {               /* repere para sempre */
-	          pthread_mutex_lock(&turno);
-	         pthread_mutex_lock(&lock);
-	              while (escritores > 0){
-	              	   pthread_cond_wait(&ler,&lock);
-	              }
-	              leitores++;
-	         pthread_mutex_unlock(&lock);
-	         pthread_mutex_unlock(&turno);
+	    pthread_mutex_lock(&turno);
+	        pthread_mutex_lock(&lock);
+	            while (escritores > 0){
+	              	pthread_cond_wait(&ler,&lock);
+	            }
+	            leitores++;
+	        pthread_mutex_unlock(&lock);
+	    pthread_mutex_unlock(&turno);
 	             
-		 read_data_base(i);       
+		read_data_base(i);       
 		
-		 pthread_mutex_lock(&lock);
-		      leitores--;
-		      if (leitores == 0){
-		          pthread_cond_signal(&escrever);
-		      }
+		pthread_mutex_lock(&lock);
+			leitores--;
+			if (leitores == 0){
+				pthread_cond_signal(&escrever);
+			}
 		pthread_mutex_unlock(&lock);
 		
-		 use_data_read(i);        /* região não crítica */
+		use_data_read(i);        /* região não crítica */
 	}
         pthread_exit(0);
 }

@@ -26,25 +26,25 @@ void* reader(void *arg) {
     while(TRUE) {        /* repete para sempre */
         
         // leitor chega aqui
-        pthread_mutex_lock(&lock_num_leitores)
+        pthread_mutex_lock(&lock_num_leitores);
         num_leitores++;
-        pthread_mutex_unlock(&lock_num_leitores)
+        pthread_mutex_unlock(&lock_num_leitores);
 
         if(num_leitores == 1){
             pthread_mutex_lock(&lock_bd); // se for o primeiro leitor ele tranca o bd
         }                                 // se NÃO for, ele não tenta pegar o lock e pula (le do banco)
 
-        read_data_base(i);                  /* acesso aos dados */
+        read_data_base(i); /* acesso aos dados */
 
-        pthread_mutex_lock(&lock_num_leitores)    
+        pthread_mutex_lock(&lock_num_leitores);
         num_leitores--;
-        pthread_mutex_unlock(&lock_num_leitores)
+        pthread_mutex_unlock(&lock_num_leitores);
 
         if(num_leitores == 0){
             pthread_mutex_unlock(&lock_bd); // se for o ultimo leitor saindo ele libera
         }
 
-        use_data_read(i);       /* região não crítica */
+        use_data_read(i);  /* região não crítica */
     }
     pthread_exit(0);
 }
@@ -64,8 +64,8 @@ void* writer(void *arg) {
 }
 
 void read_data_base(int i) {
-    printf("Leitor %d está lendo os dados!\n", i);
-    sleep(rand() % 5);
+    printf("Leitor %d está lendo os dados! Número de leitores: %d \n", i,num_leitores);
+    sleep(rand() % 5 + 5);
 }
 
 void use_data_read(int i) {

@@ -51,22 +51,28 @@ int main() {
 
 void* reader(void *arg) {
 	int i = *((int *) arg);
-	while(TRUE) {               /* repere para sempre */
+	while(TRUE) {               /* repete para sempre */
 		 pthread_mutex_lock(&turno); 
-		 pthread_mutex_lock(&mutex);    
-		 rc = rc + 1;            
-		 if (rc == 1) {          
-		     pthread_mutex_lock(&db);   
-		 }
-		 pthread_mutex_unlock(&mutex);
-	         pthread_mutex_unlock(&turno); 
-		 read_data_base(i);       
+			pthread_mutex_lock(&mutex);    
+			rc++;   
+
+			if (rc == 1) {          
+				pthread_mutex_lock(&db);   
+			}
+
+			pthread_mutex_unlock(&mutex);
+	    pthread_mutex_unlock(&turno); 
+		
+		 read_data_base(i); 
+
 		 pthread_mutex_lock(&mutex);
-		 rc = rc - 1;            
-		 if (rc == 0) {          
-		     pthread_mutex_unlock(&db);
-		 }
+			rc--;      
+
+			if (rc == 0) {          
+				pthread_mutex_unlock(&db);
+			}
 		 pthread_mutex_unlock(&mutex);
+
 		 use_data_read(i);        /* região não crítica */
 	}
         pthread_exit(0);
@@ -76,11 +82,12 @@ void* writer(void *arg) {
 	int i = *((int *) arg);
 
 	while(TRUE) {               /* repete para sempre */
-		 think_up_data(i);        /* região não crítica */
+		 think_up_data(i);   
+
 		 pthread_mutex_lock(&turno);
-		 pthread_mutex_lock(&db);          /* obtém acesso exclusivo */
-		 write_data_base(i);      /* atualiza os dados */
-		 pthread_mutex_unlock(&db);          /* libera o acesso exclusivo */
+			pthread_mutex_lock(&db);          /* obtém acesso exclusivo */
+			write_data_base(i);      /* atualiza os dados */
+			pthread_mutex_unlock(&db);          /* libera o acesso exclusivo */
 		 pthread_mutex_unlock(&turno);
 	}
         pthread_exit(0);
