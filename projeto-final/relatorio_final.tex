@@ -1,0 +1,249 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{url}
+\usepackage{lipsum}
+\usepackage{setspace}
+\usepackage{color}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[usenames,dvipsnames,svgnames,table]{xcolor}
+\usepackage[pdfstartview=FitH]{hyperref}
+\usepackage{hyperref}
+\newsavebox{\bigleftbox}
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{indentfirst}
+\usepackage{graphicx}
+\usepackage[colorinlistoftodos]{todonotes}
+\usepackage{verbatim}
+\usepackage{textcomp}
+\usepackage{gensymb}
+\usepackage{comment}
+\usepackage[margin=1.0in]{geometry}
+\usepackage{multirow}
+\usepackage[backend=biber,style=ieee]{biblatex}
+\usepackage{footmisc}
+\usepackage{multicol}
+\usepackage[font=small,labelfont=bf,skip=0.15\baselineskip]{caption}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{subfig}
+\usepackage{hyperref}
+\usepackage{scalefnt}
+\usepackage{caption}
+\hypersetup{
+ colorlinks,
+ citecolor=Blue,
+ linkcolor=Blue,
+ urlcolor=Blue
+}
+\newcommand\blfootnote[1]{%
+  \begingroup
+  \renewcommand\thefootnote{}\footnote{#1}%
+  \addtocounter{footnote}{-1}%
+  \endgroup
+}
+\makeatletter
+ \def\footnoterule{\kern-3\p@
+   \noindent\hrulefill \kern 2.8\p@} % the \hrule is .4pt high
+\makeatother
+\usepackage[left=3.00cm, right=3.00cm, top=2.00cm, bottom=2.00cm]{geometry}
+
+\usepackage[normalem]{ulem} % pra usar \sout entre nós apenas
+\usepackage{fancyhdr}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[LE,RO]{\thepage}
+\renewcommand{\headrulewidth}{1pt}
+\renewcommand{\footrulewidth}{1pt}
+
+% ------------- %
+
+\title{\textbf{Relatório - Projeto Final de Programação Concorrente}}
+\author{
+        Caetano K. Fleury de Amorim
+	}
+\date{}
+
+\begin{document}
+    \maketitle
+	\vspace{-0.6cm}
+	\begin{center}\small
+		$^1$\textit{Universidade de Brasília, Departamento de Ciência da Computação, Brasília, Brasil}\\
+		\phantom{.}\hfill
+		$^{\dag}$\url{caetano.korilo@gmail.com}\hfill
+		\phantom{.}
+	\end{center}
+	
+% ---------------------- %
+%\blfootnote{}
+%\blfootnote{}
+
+\onehalfspace
+
+\section{Introdução}
+
+Este projeto tem como objetivo a implementação de uma simulação detalhada e realista do funcionamento do Restaurante Universitário (RU) da Universidade de Brasília, empregando técnicas modernas de programação concorrente com POSIX Threads em linguagem C. O RU é um ambiente dinâmico, onde diversos tipos de usuários disputam recursos limitados, no caso, as bandejas necessárias para se servir. A proposta central é modelar, de forma fiel, a interação entre agentes com diferentes níveis de prioridade — bolsistas, estudantes regulares, funcionários e cozinheiros — e garantir que as regras de acesso e prioridade sejam rigorosamente respeitadas. O projeto busca não apenas demonstrar o funcionamento correto da sincronização entre threads, mas também proporcionar uma base sólida para o entendimento de conceitos fundamentais de concorrência, como exclusão mútua, espera condicional, prevenção de deadlocks e justiça no acesso aos recursos. A escolha pela linguagem C e pela biblioteca POSIX Threads se deve à sua ampla utilização em sistemas reais e à necessidade de controle explícito sobre os mecanismos de sincronização, tornando o estudo ainda mais próximo de aplicações práticas em sistemas operacionais e ambientes de produção.
+
+\section{Formalização do problema proposto}
+
+O problema proposto consiste em coordenar o acesso de múltiplos agentes a um recurso compartilhado — as bandejas — em um ambiente altamente concorrente, onde a ordem de atendimento e a disponibilidade dos recursos são fatores críticos para o funcionamento eficiente do sistema. No contexto do RU, a limitação do número de bandejas representa um gargalo natural, exigindo que os agentes aguardem sua vez de acordo com regras bem definidas de prioridade. Os agentes participantes são classificados em quatro categorias principais:
+
+\begin{itemize}
+    \item \textbf{Bolsistas}: representam o grupo com prioridade máxima, refletindo políticas institucionais de atendimento preferencial. Sua presença na fila impede que outros grupos se sirvam, garantindo que sempre sejam atendidos primeiro.
+    \item \textbf{Estudantes}: compõem o maior grupo de usuários e só podem se servir quando não há bolsistas aguardando. Isso simula o fluxo típico de um RU, onde a demanda é alta e a prioridade precisa ser respeitada para evitar injustiças.
+    \item \textbf{Funcionários}: possuem prioridade inferior, podendo se servir apenas na ausência de estudantes e bolsistas na fila de espera, o que reforça a hierarquia de acesso.
+    \item \textbf{Cozinheiros}: são responsáveis por repor as bandejas periodicamente, garantindo que o sistema não entre em colapso por falta de recursos. Sua atuação é fundamental para manter o ciclo de atendimento contínuo.
+\end{itemize}
+
+Além da definição clara dos grupos, algumas restrições fundamentais norteiam o funcionamento do sistema:
+\begin{itemize}
+    \item Não pode haver mais agentes servindo do que bandejas disponíveis, o que exige controle rigoroso do acesso ao recurso compartilhado para evitar inconsistências e condições de corrida.
+    \item A prioridade entre agentes deve ser estritamente respeitada, impedindo que grupos de menor prioridade furem a fila ou causem starvation em grupos preferenciais.
+    \item O sistema deve ser robusto o suficiente para evitar deadlocks e garantir progresso contínuo, mesmo em situações de alta concorrência ou chegada simultânea de múltiplos agentes.
+\end{itemize}
+Essas restrições e regras refletem não apenas a lógica de funcionamento do RU, mas também desafios clássicos da programação concorrente, tornando o problema uma excelente oportunidade para aplicação e aprofundamento dos conceitos estudados em sala de aula.
+
+\section{Descrição do Algoritmo}
+
+O algoritmo utiliza mutexes e variáveis de condição para coordenar o acesso às bandejas e garantir as prioridades. Cada agente é representado por uma thread.
+
+\subsection{Variáveis Globais e Inicialização}
+
+\begin{verbatim}
+#define N_ESTUDANTES 10
+#define N_BOLSISTAS 3
+#define N_FUNCIONARIOS 2
+#define N_COZINHEIROS 2
+#define N_BANDEJAS 4
+
+int bandejas_disponiveis = N_BANDEJAS;
+int bolsistas_esperando = 0;
+int estudantes_esperando = 0;
+int funcionarios_esperando = 0;
+
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond_bolsista = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond_estudante = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond_funcionario = PTHREAD_COND_INITIALIZER;
+pthread_cond_t cond_bandeja = PTHREAD_COND_INITIALIZER;
+\end{verbatim}
+Essas variáveis controlam o estado do sistema e a sincronização entre threads.
+
+\subsection{Thread dos Bolsistas}
+
+Os bolsistas têm prioridade máxima. Eles incrementam um contador ao entrar na fila, esperam uma bandeja livre, e só então se servem. Após comer, devolvem a bandeja e sinalizam para outros agentes, respeitando a ordem de prioridade.
+
+\begin{verbatim}
+pthread_mutex_lock(&mutex);
+bolsistas_esperando++;
+while (bandejas_disponiveis == 0) {
+    pthread_cond_wait(&cond_bandeja, &mutex);
+}
+bandejas_disponiveis--;
+bolsistas_esperando--;
+pthread_mutex_unlock(&mutex);
+servir("Bolsista", id);
+\end{verbatim}
+
+Após comer:
+\begin{verbatim}
+pthread_mutex_lock(&mutex);
+bandejas_disponiveis++;
+pthread_cond_broadcast(&cond_bandeja);
+if (bolsistas_esperando > 0)
+    pthread_cond_signal(&cond_bolsista);
+else if (estudantes_esperando > 0)
+    pthread_cond_signal(&cond_estudante);
+else
+    pthread_cond_signal(&cond_funcionario);
+pthread_mutex_unlock(&mutex);
+\end{verbatim}
+
+\subsection{Thread dos Estudantes}
+
+Estudantes só podem se servir se não houver bolsistas esperando. O padrão é semelhante ao dos bolsistas, mas com uma condição extra:
+
+\begin{verbatim}
+pthread_mutex_lock(&mutex);
+estudantes_esperando++;
+while (bandejas_disponiveis == 0 || bolsistas_esperando > 0) {
+    pthread_cond_wait(&cond_estudante, &mutex);
+}
+bandejas_disponiveis--;
+estudantes_esperando--;
+pthread_mutex_unlock(&mutex);
+servir("Estudante", id);
+\end{verbatim}
+
+\subsection{Thread dos Funcionários}
+
+Funcionários só podem se servir se não houver estudantes ou bolsistas esperando:
+
+\begin{verbatim}
+pthread_mutex_lock(&mutex);
+funcionarios_esperando++;
+while (bandejas_disponiveis == 0 || bolsistas_esperando > 0 || estudantes_esperando > 0) {
+    pthread_cond_wait(&cond_funcionario, &mutex);
+}
+bandejas_disponiveis--;
+funcionarios_esperando--;
+pthread_mutex_unlock(&mutex);
+servir("Funcionario", id);
+\end{verbatim}
+
+\subsection{Thread dos Cozinheiros}
+
+Cozinheiros repõem todas as bandejas periodicamente:
+
+\begin{verbatim}
+while (1) {
+    sleep(TEMPO_REPOSICAO);
+    pthread_mutex_lock(&mutex);
+    int falta = N_BANDEJAS - bandejas_disponiveis;
+    if (falta > 0) {
+        bandejas_disponiveis = N_BANDEJAS;
+        printf("Cozinheiro %d repôs as bandejas\n", id);
+        pthread_cond_broadcast(&cond_bandeja);
+        pthread_cond_broadcast(&cond_bolsista);
+        pthread_cond_broadcast(&cond_estudante);
+        pthread_cond_broadcast(&cond_funcionario);
+    }
+    pthread_mutex_unlock(&mutex);
+}
+\end{verbatim}
+
+\subsection{Criação das Threads}
+
+No \texttt{main()}, as threads são criadas para cada agente:
+
+\begin{verbatim}
+// estudantes
+int i = 0;
+while (i < N_ESTUDANTES) {
+    int* id = malloc(sizeof(int)); *id = i+1;
+    pthread_create(&estudantes[i], NULL, estudante_thread, id);
+    i++;
+}
+// funcionários, bolsistas e cozinheiros seguem lógica similar
+\end{verbatim}
+
+\section{Conclusão}
+
+O projeto demonstra como técnicas de sincronização (mutexes, variáveis de condição) podem ser aplicadas para garantir justiça, segurança e eficiência em um ambiente concorrente com prioridades. O uso de contadores auxiliares e sinais condicionais permite controlar o acesso aos recursos compartilhados sem starvation ou deadlock, mesmo com múltiplos agentes e prioridades distintas.
+
+\section{Referencias}
+
+\begin{itemize}
+    \item Tanenbaum, A. S., \& Bos, H. (2015). Sistemas Operacionais: Projeto e Implementação.
+    \item Silberschatz, A., Galvin, P. B., \& Gagne, G. (2018). Operating System Concepts.
+    \item Documentação oficial do POSIX Threads: \url{https://man7.org/linux/man-pages/man7/pthreads.7.html}
+    \item Material de aula da disciplina de Programação Concorrente (UnB)
+\end{itemize}
+
+\end{document}
