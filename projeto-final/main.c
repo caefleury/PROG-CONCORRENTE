@@ -29,7 +29,6 @@ void servir(const char* tipo, int id) {
     printf("%s %d terminou de se servir.\n", tipo, id);
 }
 
-
 // Bolsistas
 void* bolsista_thread(void* arg) {
     int id = *(int*)arg;
@@ -56,11 +55,11 @@ void* bolsista_thread(void* arg) {
         pthread_cond_broadcast(&cond_bandeja); 
 
         if (bolsistas_esperando > 0)
-            pthread_cond_signal(&cond_bolsista);
+            pthread_cond_signal(&cond_bolsista); // acorda bolsista
         else if (estudantes_esperando > 0)
-            pthread_cond_signal(&cond_estudante);
+            pthread_cond_signal(&cond_estudante); // acorda estudante
         else
-            pthread_cond_signal(&cond_funcionario);
+            pthread_cond_signal(&cond_funcionario); // acorda funcionario
 
         pthread_mutex_unlock(&mutex);
         sleep(rand()%9 + 10); 
@@ -87,9 +86,9 @@ void* estudante_thread(void* arg) {
         estudantes_esperando--; // saiu da fila de espera
         pthread_mutex_unlock(&mutex); // libera o mutex
 
-        servir("Estudante", id); // se serve
-        printf("Estudante %d está comendo...\n", id); // começa a comer
-        sleep(rand()%9 + 10); // tempo aleatório comendo
+        servir("Estudante", id); 
+        printf("Estudante %d está comendo...\n", id); 
+        sleep(rand()%9 + 10); 
         printf("Estudante %d terminou de comer.\n", id);
 
         pthread_mutex_lock(&mutex); // volta para devolver a bandeja
@@ -127,14 +126,13 @@ void* funcionario_thread(void* arg) {
         bandejas_disponiveis--; // pega bandeja
         funcionarios_esperando--; // saiu da fila de espera
         pthread_mutex_unlock(&mutex); 
-        servir("Funcionario", id); // simula servir-se
-        printf("Funcionario %d está comendo...\n", id); // começa a comer
-        sleep(rand()%9 + 10); // tempo comendo
+        servir("Funcionario", id); 
+        printf("Funcionario %d está comendo...\n", id); 
+        sleep(rand()%9 + 10); 
         printf("Funcionario %d terminou de comer.\n", id);
         pthread_mutex_lock(&mutex); // volta pra devolver bandeja
         bandejas_disponiveis++; // devolve bandeja
         pthread_cond_broadcast(&cond_bandeja); // avisa geral
-
 
         if (bolsistas_esperando > 0)
             pthread_cond_signal(&cond_bolsista); // acorda bolsista
@@ -143,7 +141,7 @@ void* funcionario_thread(void* arg) {
         else
             pthread_cond_signal(&cond_funcionario); // acorda outro funcionário
 
-        pthread_mutex_unlock(&mutex); // libera região crítica
+        pthread_mutex_unlock(&mutex); 
         sleep(rand()%9 + 10); // tempo até próxima refeição
     }
     return NULL;

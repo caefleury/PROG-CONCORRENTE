@@ -220,7 +220,7 @@ while (1) {
 
 \subsection{Criação das Threads}
 
-No \texttt{main()}, as threads são criadas para cada agente:
+No \texttt{main()}, as threads são criadas para cada agente: para cada leitor e cada escritor definidos na aplicação, uma nova thread é instanciada utilizando a função \texttt{pthread_create()}. 
 
 \begin{verbatim}
 // estudantes
