@@ -135,27 +135,32 @@ pthread_cond_t cond_bandeja = PTHREAD_COND_INITIALIZER;
 \end{verbatim}
 Essas variáveis controlam o estado do sistema e a sincronização entre threads.
 
+\textbf{Regiões críticas e prevenção de deadlocks:} O acesso às variáveis compartilhadas é protegido por um mutex, garantindo exclusão mútua nas regiões críticas. As variáveis de condição permitem que as threads esperem de forma segura, liberando o mutex enquanto aguardam. Dessa forma, evitamos condições de corrida e deadlocks, pois o mutex é sempre liberado antes de operações demoradas e não há espera circular.
+
 \subsection{Thread dos Bolsistas}
 
 Os bolsistas têm prioridade máxima. Eles incrementam um contador ao entrar na fila, esperam uma bandeja livre, e só então se servem. Após comer, devolvem a bandeja e sinalizam para outros agentes, respeitando a ordem de prioridade.
 
 \begin{verbatim}
+// entra na região crítica
 pthread_mutex_lock(&mutex);
-bolsistas_esperando++;
+bolsistas_esperando++; // sinaliza que está esperando
+// espera se não há bandeja disponível
 while (bandejas_disponiveis == 0) {
     pthread_cond_wait(&cond_bandeja, &mutex);
 }
-bandejas_disponiveis--;
-bolsistas_esperando--;
-pthread_mutex_unlock(&mutex);
-servir("Bolsista", id);
-\end{verbatim}
+bandejas_disponiveis--; // pega uma bandeja
+bolsistas_esperando--; // saiu da fila de espera
+pthread_mutex_unlock(&mutex); // libera o mutex
+servir("Bolsista", id); // se serve
+\end{verbatim>
 
 Após comer:
 \begin{verbatim}
+// volta pra devolver bandeja
 pthread_mutex_lock(&mutex);
-bandejas_disponiveis++;
-pthread_cond_broadcast(&cond_bandeja);
+bandejas_disponiveis++; // devolve bandeja
+pthread_cond_broadcast(&cond_bandeja); // avisa todos
 if (bolsistas_esperando > 0)
     pthread_cond_signal(&cond_bolsista);
 else if (estudantes_esperando > 0)
@@ -170,15 +175,17 @@ pthread_mutex_unlock(&mutex);
 Estudantes só podem se servir se não houver bolsistas esperando. O padrão é semelhante ao dos bolsistas, mas com uma condição extra:
 
 \begin{verbatim}
+// entra na região crítica
 pthread_mutex_lock(&mutex);
-estudantes_esperando++;
+estudantes_esperando++; // avisa que está esperando
+// espera se não há bandeja ou se há bolsista esperando (prioridade)
 while (bandejas_disponiveis == 0 || bolsistas_esperando > 0) {
-    pthread_cond_wait(&cond_estudante, &mutex);
+    pthread_cond_wait(&cond_estudante, &mutex); // fica bloqueado até ser sinalizado
 }
-bandejas_disponiveis--;
-estudantes_esperando--;
-pthread_mutex_unlock(&mutex);
-servir("Estudante", id);
+bandejas_disponiveis--; // pega uma bandeja
+estudantes_esperando--; // saiu da fila de espera
+pthread_mutex_unlock(&mutex); // libera o mutex
+servir("Estudante", id); // se serve
 \end{verbatim}
 
 \subsection{Thread dos Funcionários}
@@ -186,16 +193,18 @@ servir("Estudante", id);
 Funcionários só podem se servir se não houver estudantes ou bolsistas esperando:
 
 \begin{verbatim}
+// entra na região crítica
 pthread_mutex_lock(&mutex);
-funcionarios_esperando++;
+funcionarios_esperando++; // sinaliza que está esperando
+// espera se não há bandeja ou se há alguém de prioridade maior esperando
 while (bandejas_disponiveis == 0 || bolsistas_esperando > 0 || estudantes_esperando > 0) {
-    pthread_cond_wait(&cond_funcionario, &mutex);
+    pthread_cond_wait(&cond_funcionario, &mutex); // só acorda quando não há ninguém na frente
 }
-bandejas_disponiveis--;
-funcionarios_esperando--;
-pthread_mutex_unlock(&mutex);
-servir("Funcionario", id);
-\end{verbatim}
+bandejas_disponiveis--; // pega bandeja
+funcionarios_esperando--; // saiu da fila de espera
+pthread_mutex_unlock(&mutex); // libera mutex
+servir("Funcionario", id); // se serve
+\end{verbatim>
 
 \subsection{Thread dos Cozinheiros}
 
@@ -203,20 +212,22 @@ Cozinheiros repõem todas as bandejas periodicamente:
 
 \begin{verbatim}
 while (1) {
-    sleep(TEMPO_REPOSICAO);
-    pthread_mutex_lock(&mutex);
-    int falta = N_BANDEJAS - bandejas_disponiveis;
+    sleep(TEMPO_REPOSICAO); // espera o tempo de reposição (simula trabalho)
+    pthread_mutex_lock(&mutex); // entra na região crítica para repor
+    int falta = N_BANDEJAS - bandejas_disponiveis; // calcula quantas faltam
+    // Se há bandejas para repor, repõe todas de uma vez
     if (falta > 0) {
-        bandejas_disponiveis = N_BANDEJAS;
-        printf("Cozinheiro %d repôs as bandejas\n", id);
+        bandejas_disponiveis = N_BANDEJAS; // repõe tudo
+        printf("Cozinheiro %d repôs as bandejas\n", id); // log didático
+        // Notifica todos os tipos de agentes que podem estar esperando
         pthread_cond_broadcast(&cond_bandeja);
         pthread_cond_broadcast(&cond_bolsista);
         pthread_cond_broadcast(&cond_estudante);
         pthread_cond_broadcast(&cond_funcionario);
     }
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(&mutex); // libera mutex
 }
-\end{verbatim}
+\end{verbatim>
 
 \subsection{Criação das Threads}
 
@@ -240,8 +251,6 @@ O projeto demonstra como técnicas de sincronização (mutexes, variáveis de co
 \section{Referencias}
 
 \begin{itemize}
-    \item Tanenbaum, A. S., \& Bos, H. (2015). Sistemas Operacionais: Projeto e Implementação.
-    \item Silberschatz, A., Galvin, P. B., \& Gagne, G. (2018). Operating System Concepts.
     \item Documentação oficial do POSIX Threads: \url{https://man7.org/linux/man-pages/man7/pthreads.7.html}
     \item Material de aula da disciplina de Programação Concorrente (UnB)
 \end{itemize}
